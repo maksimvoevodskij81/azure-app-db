@@ -63,7 +63,7 @@ jobs:
           app-name: 'demo-app-with-db'
           slot-name: 'Production'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_8A30C689F00B4D05AEF6E0C364AAC5A3 }}
-          package: ${{ github.workspace }}/path/to/your/published/app
+          package: ./.net-app/
 
       - name: Azure SQL Deploy
         uses: Azure/sql-action@v2
