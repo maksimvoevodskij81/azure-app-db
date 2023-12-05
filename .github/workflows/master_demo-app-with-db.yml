@@ -1,6 +1,3 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-
 name: Build and deploy ASP.Net Core app to Azure Web App - demo-app-with-db
 
 on:
@@ -14,25 +11,30 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up .NET Core
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: '8.0.x'
+
       - name: Restore Dependencies
         run: dotnet restore
+
       - name: Build with dotnet
         run: dotnet build --configuration Release
 
-      - name: dotnet publish
+      - name: Publish dotnet app
         run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
+
       - name: Install EntityFramworkCore Tools  
-        run: 
-              dotnet new tool-manifest
-              dotnet tool install dotnet-ef
+        run: |
+          dotnet new tool-manifest
+          dotnet tool install dotnet-ef
+
       - name: Generate EF Core Migration Script       
-        run:  dotnet ef migration script --idempotent --no-build --configuration  Release --output ${{env.DOTNET_ROOT}}/sql/sql-script.sql --context db-app.Data.ProjectContext --project  ${{github.workspace}}/db-app/db-app.csproj 
+        run:  dotnet ef migration script --idempotent --no-build --configuration Release --output ${{env.DOTNET_ROOT}}/sql/sql-script.sql --context db-app.Data.ProjectContext --project ${{github.workspace}}/db-app/db-app.csproj 
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v3
@@ -50,8 +52,9 @@ jobs:
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v3
-     
-      
+        with:
+          name: ddl-updates
+
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v2
@@ -59,10 +62,10 @@ jobs:
           app-name: 'demo-app-with-db'
           slot-name: 'Production'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_8A30C689F00B4D05AEF6E0C364AAC5A3 }}
-          package: ./ .net-app/
+          package: ${{ github.workspace }}/path/to/your/published/app
 
       - name: Azure SQL Deploy
         uses: Azure/sql-action@v2
-        with: 
-           connection-string: ${{secrets.SQL_CONNECTION_STRING}}
-           path: ./ddl-updates/sql-script.sql
+        with:
+          connection-string: ${{secrets.SQL_CONNECTION_STRING}}
+          path: ./sql-script.sql
