@@ -1,0 +1,72 @@
+name: Build and deploy ASP.Net Core app to Azure Web App - demo-app-with-db
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET Core
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore Dependencies
+        run: dotnet restore
+
+      - name: Build with dotnet
+        run: dotnet build --configuration Release
+
+      - name: Publish dotnet app
+        run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
+
+      - name: Install EntityFramworkCore Tools  
+        run: |
+          dotnet new tool-manifest
+          dotnet tool install dotnet-ef
+
+      - name: Generate EF Core Migration Script       
+        run: |
+          dotnet ef migrations script --idempotent --no-build --configuration Release --output ${{env.DOTNET_ROOT}}/sql/sql-script.sql --context ProjectContext --project ${{github.workspace}}/db-app/db-app.csproj
+
+      - name: Upload artifact for deployment job
+        uses: actions/upload-artifact@v3
+        with:
+          name: ddl-updates
+          path: ${{env.DOTNET_ROOT}}/sql/sql-script.sql
+
+  deploy:
+    runs-on: windows-latest
+    needs: build
+    environment:
+      name: 'Production'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+    
+    steps:
+      - name: Download artifact from build job
+        uses: actions/download-artifact@v3
+        with:
+          name: ddl-updates
+
+      - name: Deploy to Azure Web App
+        id: deploy-to-webapp
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: 'demo-app-with-db'
+          slot-name: 'Production'
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_8A30C689F00B4D05AEF6E0C364AAC5A3 }}
+          package: .
+
+      - name: Azure SQL Deploy
+        uses: Azure/sql-action@v2
+        with:
+          connection-string: ${{secrets.SQL_CONNECTION_STRING}}
+          path: ./sql-script.sql
