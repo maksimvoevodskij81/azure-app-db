@@ -35,7 +35,7 @@ jobs:
 
       - name: Generate EF Core Migration Script       
         run: |
-          dotnet exec --no-build --tool-path .\tools dotnet-ef migration script --idempotent --configuration Release --output ${{env.DOTNET_ROOT}}/sql/sql-script.sql --context db-app.Data.ProjectContext --project ${{github.workspace}}/db-app/db-app.csproj 
+          dotnet-ef migration script --idempotent --no-build --configuration Release --output ${{env.DOTNET_ROOT}}/sql/sql-script.sql --context db-app.Data.ProjectContext --project ${{github.workspace}}/db-app/db-app.csproj
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v3
